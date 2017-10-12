@@ -4,25 +4,44 @@ pipeline {
     }
    
     environment {
-        BUILD_DIR = "build"
-        SCRIPT_DIR=  "scripts"
+        BUILD_TIME_STR="TIME: %e %S %U %P %c %w %R %F %M %x %C"
+        BUILD_DIR  = "build"
+        SCRIPT_DIR =  "scripts"
+        DOCKER_CON_NAME = "ubuntu-1404"
+        LXC_CON_NAME = "ubuntu-1404"
+        BUILD_BRANCH_DEFAULT = "@gld4tv"
+        //BUILD_IMAGES_DEFAULT = "starfish-atsc-flash starfish-atsc-flash-devel starfish-atsc-nfs starfish-atsc-nfs-devel starfish-atsc-secured starfish-arib-flash starfish-arib-flash-devel starfish-arib-nfs starfish-arib-nfs-devel starfish-arib-secured starfish-dvb-flash starfish-dvb-flash-devel starfish-dvb-nfs starfish-dvb-nfs-devel starfish-dvb-secured"
+        BUILD_IMAGES_DEFAULT = "starfish-atsc-flash"
+        BUILD_MACHINE_DEFAULT = "o18"
     } 
     stages {
         stage('Prepare') {
             steps {
-                //sh '/usr/bin/time sudo rm -rf /home/work/gatekeeper.tvsw/work/build-starfish'
-                sh "env"
+                sh "env|grep _DIR"
             }
         }
         stage('Build'){
             steps {
-                /*
                 script {
-                    currentBuild.description = agent_label+", "+env.BUILD_TYPE
+                    /**
+                     * Prepare variables for a build job
+                     */
+                    BUILD_BRANCH = "${env.BUILD_BRANCH == null ? BUILD_BRANCH_DEFAULT : env.BUILD_BRANCH}"
+                    BUILD_IMAGES = "${env.BUILD_IMAGES == null ? BUILD_IMAGES_DEFAULT : env.BUILD_IMAGES}"
+                    BUILD_MACHINE = "${env.BUILD_MACHINE== null ? BUILD_MACHINE_DEFAULT : env.BUILD_MACHINE}"
+                    BUILD_SCRIPT = """
+export BUILD_NUMBER=104 && \
+/usr/bin/time sudo rm -rf build-starfish && \
+git clone -b ${BUILD_BRANCH} ssh://wall.lge.com/starfish/build-starfish && \
+pushd build-starfish && \
+./mcf -b 0 -p 0 ${BUILD_MACHINE} --premirror=file:///starfish/starfish/gld/downloads --sstatemirror=file:///starfish/starfish/gld/sstate-cache && \
+. oe-init-build-env && \
+/usr/bin/time -f \"${BUILD_TIME_STR}\" scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
+"""
+                    echo "INFO: Build Script = \n${BUILD_SCRIPT}"
+                    currentBuild.description = env.AGENT_NAME + ", "+env.BUILD_TYPE
                     if (env.BUILD_TYPE == "real") {
-                        sh '''
-                        /home/work/gatekeeper.tvsw/script.sh
-                        '''
+                        sh "/bin/bash -c '${BUILD_SCRIPT}'"
                     } else if (env.BUILD_TYPE == "lxc"){
                         sh '''
                         CONTAINER_NAME="ubuntu-1404"
@@ -36,12 +55,7 @@ pipeline {
                         docker run --rm=true --privileged=true --name=testbuild_${BUILD_NUMBER} -w /home/work/gatekeeper.tvsw -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 /home/work/gatekeeper.tvsw/script.sh
                         '''
                     }
-                
                 }
-                */
-                sh "pwd"
-                sh "ls"
-                sh "hostname"
             }
         }
     }
