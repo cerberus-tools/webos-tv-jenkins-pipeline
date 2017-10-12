@@ -1,0 +1,48 @@
+pipeline {
+    agent {
+        label "${env.AGENT_NAME}"
+    }
+   
+    environment {
+        BUILD_DIR = "build"
+        SCRIPT_DIR=  "scripts"
+    } 
+    stages {
+        stage('Prepare') {
+            steps {
+                //sh '/usr/bin/time sudo rm -rf /home/work/gatekeeper.tvsw/work/build-starfish'
+                sh "env"
+            }
+        }
+        stage('Build'){
+            steps {
+                /*
+                script {
+                    currentBuild.description = agent_label+", "+env.BUILD_TYPE
+                    if (env.BUILD_TYPE == "real") {
+                        sh '''
+                        /home/work/gatekeeper.tvsw/script.sh
+                        '''
+                    } else if (env.BUILD_TYPE == "lxc"){
+                        sh '''
+                        CONTAINER_NAME="ubuntu-1404"
+                        CONTAINER_IP=`sudo lxc-info -n ${CONTAINER_NAME} |grep IP|awk '{print $2}'`
+                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${CONTAINER_IP} /home/work/gatekeeper.tvsw/script.sh
+                        '''
+                    } else if (env.BUILD_TYPE == "docker"){
+                        sh '''
+                        CONTAINER_NAME="ubuntu-1404"
+                        CONTAINER_IP=`sudo lxc-info -n ${CONTAINER_NAME} |grep IP|awk '{print $2}'`
+                        docker run --rm=true --privileged=true --name=testbuild_${BUILD_NUMBER} -w /home/work/gatekeeper.tvsw -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 /home/work/gatekeeper.tvsw/script.sh
+                        '''
+                    }
+                
+                }
+                */
+                sh "pwd"
+                sh "ls"
+                sh "hostname"
+            }
+        }
+    }
+}
