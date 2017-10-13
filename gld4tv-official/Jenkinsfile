@@ -7,6 +7,7 @@ pipeline {
         BUILD_TIME_STR="TIME: %e %S %U %P %c %w %R %F %M %x %C"
         BUILD_DIR  = "build"
         SCRIPT_DIR =  "scripts"
+        DOCKER_BASE_IMAGE = "arion.lge.com:5000/lgewebosbuild/webosbuild_14.04"
         DOCKER_CON_NAME = "ubuntu-1404"
         DOCKER_CON_IP = null
         LXC_CON_NAME = "ubuntu-1404"
@@ -71,7 +72,8 @@ pushd build-starfish
                         """
                     } else if (env.BUILD_TYPE == "docker"){
                         sh """
-                        docker run --rm=true --privileged=true --name=testbuild_${env.BUILD_NUMBER} -w ${env.WORKSPACE} -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 /bin/bash -c './${BUILD_SCRIPT_FILE}'
+                        docker pull ${DOCKER_BASE_IMAGE} && \
+                        docker run --rm=true --privileged=true --name=testbuild_${env.BUILD_NUMBER} -w ${env.WORKSPACE} -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE ${DOCKER_BASE_IMAGE} /bin/bash -c './${BUILD_SCRIPT_FILE}'
                         """
                     }
                 }
