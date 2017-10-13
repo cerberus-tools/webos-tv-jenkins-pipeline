@@ -13,11 +13,15 @@ pipeline {
         LXC_CON_NAME = "ubuntu-1404"
         LXC_CON_IP = null
         BUILD_BRANCH_DEFAULT = "@gld4tv"
-        //BUILD_IMAGES_DEFAULT = "starfish-atsc-flash starfish-atsc-flash-devel starfish-atsc-nfs starfish-atsc-nfs-devel starfish-atsc-secured starfish-arib-flash starfish-arib-flash-devel starfish-arib-nfs starfish-arib-nfs-devel starfish-arib-secured starfish-dvb-flash starfish-dvb-flash-devel starfish-dvb-nfs starfish-dvb-nfs-devel starfish-dvb-secured"
-        BUILD_IMAGES_DEFAULT = "starfish-atsc-flash"
+        BUILD_IMAGES_DEFAULT = "starfish-atsc-flash starfish-atsc-flash-devel starfish-atsc-nfs starfish-atsc-nfs-devel starfish-atsc-secured starfish-arib-flash starfish-arib-flash-devel starfish-arib-nfs starfish-arib-nfs-devel starfish-arib-secured starfish-dvb-flash starfish-dvb-flash-devel starfish-dvb-nfs starfish-dvb-nfs-devel starfish-dvb-secured"
         BUILD_MACHINE_DEFAULT = "o18"
+        BUILD_NUMBER_DEFAULT  = "104"
         CHECK_MACHINE = "NO"
         BUILD_SCRIPT_FILE = "run_build.sh"
+        USE_PREMIRROR_DEFAULT = "Y"
+        USE_SSTATEMIRROR_DEFAULT = "N"
+        PREMIRROR_PATH = ""
+        SSTATEMIRROR_PATH = ""
     } 
 
     stages {
@@ -41,17 +45,45 @@ pipeline {
                      */
                     BUILD_BRANCH = "${env.BUILD_BRANCH == null ? BUILD_BRANCH_DEFAULT : env.BUILD_BRANCH}"
                     BUILD_IMAGES = "${env.BUILD_IMAGES == null ? BUILD_IMAGES_DEFAULT : env.BUILD_IMAGES}"
-                    BUILD_MACHINE = "${env.BUILD_MACHINE== null ? BUILD_MACHINE_DEFAULT : env.BUILD_MACHINE}"
+                    BUILD_MACHINE = "${env.BUILD_MACHINE == null ? BUILD_MACHINE_DEFAULT : env.BUILD_MACHINE}"
+                    BUILD_NUMBER = "${env.BUILD_NUMBER_TARGET == null ? BUILD_MACHINE_DEFAULT : env.BUILD_NUMBER_TARGET}"
+                    USE_PREMIRROR = "${env.USE_PREMIRROR == null ? USE_PREMIRROR_DEFAULT : env.USE_PREMIRROR}"
+                    USE_SSTATEMIRROR = "${env.USE_SSTATEMIRROR == null ? USE_SSTATEMIRROR_DEFAULT : env.USE_SSTATEMIRROR}"
+                    if (USE_PREMIRROR == "Y" ) {
+                        if (BUILD_BRANCH == "@gld4tv" ) {
+                            PREMIRROR_PATH = "--premirror=file:///starfish/starfish/gld/downloads"
+                        } else if (BUILD_BRANCH == "@drd4tv" ) {
+                            PREMIRROR_PATH = "--premirror=file:///starfish/starfish/dreadlocks/downloads"
+                        } else {
+                            PREMIRROR_PATH = "--premirror=file:///starfish/starfish/gld/downloads"
+                        }
+                    } else {
+                        PREMIRROR_PATH = " "
+                    }
+                    if (USE_SSTATEMIRROR == "Y" ) {
+                        if (BUILD_BRANCH == "@gld4tv" ) {
+                            SSTATEMIRROR_PATH = "--sstatemirror=file:///starfish/starfish/gld/sstate-cache"
+                        } else if (BUILD_BRANCH == "@drd4tv" ) {
+                            SSTATEMIRROR_PATH = "--sstatemirror=file:///starfish/starfish/dreadlocks/sstate-cache"
+                        } else {
+                            SSTATEMIRROR_PATH = "--sstatemirror=file:///starfish/starfish/gld/sstate-cache"
+                        }
+                    } else {
+                        SSTATEMIRROR_PATH = " "
+                    }
                     BUILD_SCRIPT = """#!/bin/bash
-export BUILD_NUMBER=104
+export BUILD_NUMBER=${BUILD_NUMBER}
 pushd ${env.WORKSPACE}
 /usr/bin/time sudo rm -rf build-starfish
 git clone -b ${BUILD_BRANCH} ssh://wall.lge.com/starfish/build-starfish
 pushd build-starfish
-./mcf -b 0 -p 0 ${BUILD_MACHINE} --premirror=file:///starfish/starfish/gld/downloads --sstatemirror=file:///starfish/starfish/gld/sstate-cache
+./mcf -b 0 -p 0 ${BUILD_MACHINE} ${PREMIRROR_PATH} ${SSTATEMIRROR_PATH}
 . oe-init-build-env
 /usr/bin/time -f "${BUILD_TIME_STR}" scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
 """
+                    /**
+                     * Print other information
+                     */
                     echo "INFO: Build Script  = \n${BUILD_SCRIPT}"
                     echo "INFO: Build Branch  = ${BUILD_BRANCH}"
                     echo "INFO: Build Machine = ${BUILD_MACHINE}"
