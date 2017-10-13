@@ -15,7 +15,8 @@ pipeline {
         //BUILD_IMAGES_DEFAULT = "starfish-atsc-flash starfish-atsc-flash-devel starfish-atsc-nfs starfish-atsc-nfs-devel starfish-atsc-secured starfish-arib-flash starfish-arib-flash-devel starfish-arib-nfs starfish-arib-nfs-devel starfish-arib-secured starfish-dvb-flash starfish-dvb-flash-devel starfish-dvb-nfs starfish-dvb-nfs-devel starfish-dvb-secured"
         BUILD_IMAGES_DEFAULT = "starfish-atsc-flash"
         BUILD_MACHINE_DEFAULT = "o18"
-        CHECK_MACHINE="NO"
+        CHECK_MACHINE = "NO"
+        BUILD_SCRIPT_FILE = "run_build.sh"
     } 
 
     stages {
@@ -48,25 +49,29 @@ pipeline {
                     BUILD_IMAGES = "${env.BUILD_IMAGES == null ? BUILD_IMAGES_DEFAULT : env.BUILD_IMAGES}"
                     BUILD_MACHINE = "${env.BUILD_MACHINE== null ? BUILD_MACHINE_DEFAULT : env.BUILD_MACHINE}"
                     BUILD_SCRIPT = """
-export BUILD_NUMBER=104 && \
-/usr/bin/time sudo rm -rf build-starfish && \
-git clone -b ${BUILD_BRANCH} ssh://wall.lge.com/starfish/build-starfish && \
-pushd build-starfish && \
-./mcf -b 0 -p 0 ${BUILD_MACHINE} --premirror=file:///starfish/starfish/gld/downloads --sstatemirror=file:///starfish/starfish/gld/sstate-cache && \
-. oe-init-build-env && \
-/usr/bin/time -f '${BUILD_TIME_STR}' scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
+#!/bin/bash
+export BUILD_NUMBER=104
+pushd ${env.WORKSPACE}
+/usr/bin/time sudo rm -rf build-starfish
+git clone -b ${BUILD_BRANCH} ssh://wall.lge.com/starfish/build-starfish
+pushd build-starfish
+./mcf -b 0 -p 0 ${BUILD_MACHINE} --premirror=file:///starfish/starfish/gld/downloads --sstatemirror=file:///starfish/starfish/gld/sstate-cache
+. oe-init-build-env
+/usr/bin/time -f "${BUILD_TIME_STR}" scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
 """
                     echo "INFO: Build Script = \n${BUILD_SCRIPT}"
+                    sh "echo '${BUILD_SCRIPT}' > ${BUILD_SCRIPT_FILE} && chmod +x ${BUILD_SCRIPT_FILE}"
+
                     currentBuild.description = env.AGENT_NAME + ", "+env.BUILD_TYPE
                     if (env.BUILD_TYPE == "real") {
-                        sh "/bin/bash -c '${BUILD_SCRIPT}'"
+                        sh "/bin/bash -c './${BUILD_SCRIPT_FILE}'"
                     } else if (env.BUILD_TYPE == "lxc"){
                         sh """
-                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${LXC_CON_IP} \"${BUILD_SCRIPT}\"
+                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${LXC_CON_IP} /bin/bash -c "${env.WORKSPACE}/${BUILD_SCRIPT_FILE}"
                         """
                     } else if (env.BUILD_TYPE == "docker"){
                         sh """
-                        docker run --rm=true --privileged=true --name=testbuild_${env.BUILD_NUMBER} -w /home/work/gatekeeper.tvsw -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 \"${BUILD_SCRIPT}\"
+                        docker run --rm=true --privileged=true --name=testbuild_${env.BUILD_NUMBER} -w ${env.WORKSPACE} -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 /bin/bash -c './${BUILD_SCRIPT_FILE}'
                         """
                     }
                 }
