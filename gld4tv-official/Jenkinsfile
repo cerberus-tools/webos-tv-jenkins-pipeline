@@ -8,16 +8,34 @@ pipeline {
         BUILD_DIR  = "build"
         SCRIPT_DIR =  "scripts"
         DOCKER_CON_NAME = "ubuntu-1404"
+        DOCKER_CON_IP = null
         LXC_CON_NAME = "ubuntu-1404"
+        LXC_CON_IP = null
         BUILD_BRANCH_DEFAULT = "@gld4tv"
         //BUILD_IMAGES_DEFAULT = "starfish-atsc-flash starfish-atsc-flash-devel starfish-atsc-nfs starfish-atsc-nfs-devel starfish-atsc-secured starfish-arib-flash starfish-arib-flash-devel starfish-arib-nfs starfish-arib-nfs-devel starfish-arib-secured starfish-dvb-flash starfish-dvb-flash-devel starfish-dvb-nfs starfish-dvb-nfs-devel starfish-dvb-secured"
         BUILD_IMAGES_DEFAULT = "starfish-atsc-flash"
         BUILD_MACHINE_DEFAULT = "o18"
+        CHECK_MACHINE="NO"
     } 
+
     stages {
         stage('Prepare') {
             steps {
                 sh "env|grep _DIR"
+                script {
+                    /**
+                     *   Get Container IP
+                     */
+                    if (env.BUILD_TYPE == "lxc") {
+                        LXC_CON_IP = sh returnStdout: true, script: "sudo lxc-info -n ${LXC_CON_NAME}"
+                        LXC_CON_IP = LXC_CON_IP.replaceAll(" ", "").split("\n").findAll{ it.contains 'IP:'}[0].replaceAll("IP:", "")
+                    }
+                    else if (env.BUILD_TYPE == "docker") {
+                        DOCKER_CON_IP = sh returnStdout: true, script: "sudo lxc-info -n ${DOCKER_CON_NAME}"
+                        DOCKER_CON_IP = DOCKER_CON_IP.trim()
+                    }
+                    CHECK_MACHINE = "YES"
+                }
             }
         }
         stage('Build'){
@@ -36,24 +54,20 @@ git clone -b ${BUILD_BRANCH} ssh://wall.lge.com/starfish/build-starfish && \
 pushd build-starfish && \
 ./mcf -b 0 -p 0 ${BUILD_MACHINE} --premirror=file:///starfish/starfish/gld/downloads --sstatemirror=file:///starfish/starfish/gld/sstate-cache && \
 . oe-init-build-env && \
-/usr/bin/time -f \"${BUILD_TIME_STR}\" scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
+/usr/bin/time -f '${BUILD_TIME_STR}' scripts/build.sh --machines=${BUILD_MACHINE} --images=${BUILD_IMAGES} --targets=  --bom --signatures --site=hq --jenkins=cerberus --job=official
 """
                     echo "INFO: Build Script = \n${BUILD_SCRIPT}"
                     currentBuild.description = env.AGENT_NAME + ", "+env.BUILD_TYPE
                     if (env.BUILD_TYPE == "real") {
                         sh "/bin/bash -c '${BUILD_SCRIPT}'"
                     } else if (env.BUILD_TYPE == "lxc"){
-                        sh '''
-                        CONTAINER_NAME="ubuntu-1404"
-                        CONTAINER_IP=`sudo lxc-info -n ${CONTAINER_NAME} |grep IP|awk '{print $2}'`
-                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${CONTAINER_IP} /home/work/gatekeeper.tvsw/script.sh
-                        '''
+                        sh """
+                        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ${LXC_CON_IP} \"${BUILD_SCRIPT}\"
+                        """
                     } else if (env.BUILD_TYPE == "docker"){
-                        sh '''
-                        CONTAINER_NAME="ubuntu-1404"
-                        CONTAINER_IP=`sudo lxc-info -n ${CONTAINER_NAME} |grep IP|awk '{print $2}'`
-                        docker run --rm=true --privileged=true --name=testbuild_${BUILD_NUMBER} -w /home/work/gatekeeper.tvsw -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 /home/work/gatekeeper.tvsw/script.sh
-                        '''
+                        sh """
+                        docker run --rm=true --privileged=true --name=testbuild_${env.BUILD_NUMBER} -w /home/work/gatekeeper.tvsw -u gatekeeper.tvsw -v /starfish:/starfish -v /binary:/binary -v /home/work/gatekeeper.tvsw:/home/work/gatekeeper.tvsw -v /vol/users/gatekeeper.tvsw:/vol/users/gatekeeper.tvsw --cap-add=SYS_RAWIO --cap-add=SYS_SYSADMIN --cap-add=SYS_SYSRESOURCE arion.lge.com:5000/lgewebosbuild/webosbuild_14.04 \"${BUILD_SCRIPT}\"
+                        """
                     }
                 }
             }
