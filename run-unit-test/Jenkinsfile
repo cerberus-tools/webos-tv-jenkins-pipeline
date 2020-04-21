@@ -1,0 +1,33 @@
+pipeline {
+    agent {
+        label 'run-unittest'
+    }
+
+    stages {
+        stage('Cleanup') {
+            steps {
+                script {
+                    echo "Remove 'module' directory"
+                    sh "rm -rf module"
+                }
+            }
+        }
+        stage('Checkout a change') {
+            steps {
+                script {
+                    echo "Checkout a change from Gerrit"
+                    sh "git clone ssh://${env.GERRIT_HOST}/${env.GERRIT_PROJECT} module"
+                    sh "cd module && git fetch origin ${env.GERRIT_REFSPEC} && git checkout FETCH_HEAD"
+                }
+            }
+        }
+        stage('Trigger Unit Test') {
+            steps {
+                script {
+                    sh "cd module && docker-compose run run-test"
+                }
+            }
+        }
+    }
+}
+
