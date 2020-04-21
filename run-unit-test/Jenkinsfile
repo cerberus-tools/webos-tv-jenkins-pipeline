@@ -9,6 +9,8 @@ pipeline {
                 script {
                     echo "Remove 'module' directory"
                     sh "rm -rf module"
+                    echo "Cleanup old docker imges"
+                    sh "docker system prune -f -a"
                 }
             }
         }
