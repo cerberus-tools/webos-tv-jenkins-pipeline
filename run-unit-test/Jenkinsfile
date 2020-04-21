@@ -9,8 +9,6 @@ pipeline {
                 script {
                     echo "Remove 'module' directory"
                     sh "rm -rf module"
-                    echo "Cleanup old docker imges"
-                    sh "docker system prune -f -a"
                 }
             }
         }
@@ -26,7 +24,7 @@ pipeline {
         stage('Trigger Unit Test') {
             steps {
                 script {
-                    sh "cd module && docker-compose run run-test 2>&1"
+                    sh "cd module && docker-compose pull && docker-compose run run-test 2>&1"
                 }
             }
         }
