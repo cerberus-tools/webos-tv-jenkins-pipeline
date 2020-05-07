@@ -9,6 +9,7 @@ pipeline {
                 script {
                     echo "Remove 'module' directory"
                     sh "sudo rm -rf module"
+                    currentBuild.description = "<li>${env.GERRIT_PROJECT}</li><li>${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER}</li><li>${env.GERRIT_EVENT_ACCOUNT_NAME}</li>"
                 }
             }
         }
