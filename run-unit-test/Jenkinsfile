@@ -1,3 +1,5 @@
+import groovy.json.JsonOutput
+
 def do_test = false
 
 pipeline {
@@ -10,8 +12,8 @@ pipeline {
             steps {
                 script {
                     message = "An unit test has been triggered on ${env.BUILD_URL}"
-                    //sh "printf '\"{\"message\": \"%s\" }\"' \"test message\"| ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
-                    sh "printf '{\"message\": \"%s\" }' \"test message\" > data.json"
+                    review_data = JsonOutput.toJson([message: message])
+                    writeFile file: "data.json", text: review_data
                     sh "cat data.json| ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
                     echo "Remove 'module' directory"
                     sh "sudo rm -rf module"
@@ -53,14 +55,18 @@ pipeline {
                 } else {
                     review_message = "Your change doesn't have run-test.sh and docker-compose.yml files on the root. So you can't use Unit test enviroments"
                 }
-                sh "printf  '\"{\"message\": \"%s\", \"labels\": {\"Verified\": %s}}\"' '${review_message} ${verified}' | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+                review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
+                writeFile file: "data.json", text: review_data
+                sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
             }
         }
         failure {
             script {
                 def review_message = "Failure: Unit test on ${env.BUILD_URL}"
                 def verified = "-1"
-                sh "printf '\"{\"message\": \"%s\", \"labels\": {\"Verified\": %s}}\"' '${review_message} ${verified}' | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+                review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
+                writeFile file: "data.json", text: review_data
+                sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
             }
         }
     }
