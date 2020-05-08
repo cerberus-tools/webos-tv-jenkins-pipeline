@@ -1,3 +1,5 @@
+def do_test = false
+
 pipeline {
     agent {
         label 'run-unittest'
@@ -7,6 +9,10 @@ pipeline {
         stage('Cleanup') {
             steps {
                 script {
+                    message = "An unit test has been triggered on ${env.BUILD_URL}"
+                    //sh "printf '\"{\"message\": \"%s\" }\"' \"test message\"| ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+                    sh "printf '{\"message\": \"%s\" }' \"test message\" > data.json"
+                    sh "cat data.json| ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
                     echo "Remove 'module' directory"
                     sh "sudo rm -rf module"
                     currentBuild.description = "<li>${env.GERRIT_PROJECT}</li><li>${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER}</li><li>${env.GERRIT_EVENT_ACCOUNT_NAME}</li>"
@@ -19,10 +25,16 @@ pipeline {
                     echo "Checkout a change from Gerrit"
                     sh "git clone ssh://${env.GERRIT_HOST}/${env.GERRIT_PROJECT} module 2>&1"
                     sh "cd module && git fetch origin ${env.GERRIT_REFSPEC} && git checkout FETCH_HEAD"
+                    if (fileExists("module/run-test.sh") && fileExists("module/docker-compose.yml")) {
+                        do_test = true
+                    }
                 }
             }
         }
         stage('Trigger Unit Test') {
+            when {
+                expression { return do_test }
+            }
             steps {
                 script {
                     sh "cd module && docker-compose pull && docker-compose run run-test 2>&1"
@@ -30,5 +42,26 @@ pipeline {
             }
         }
     }
+    post {
+        success {
+            script {
+                def review_message = ""
+                def verified = "0"
+                if (do_test) {
+                    review_message = "Success: Unit Test on ${env.BUILD_URL}"
+                    verified = "1"
+                } else {
+                    review_message = "Your change doesn't have run-test.sh and docker-compose.yml files on the root. So you can't use Unit test enviroments"
+                }
+                sh "printf  '\"{\"message\": \"%s\", \"labels\": {\"Verified\": %s}}\"' '${review_message} ${verified}' | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+            }
+        }
+        failure {
+            script {
+                def review_message = "Failure: Unit test on ${env.BUILD_URL}"
+                def verified = "-1"
+                sh "printf '\"{\"message\": \"%s\", \"labels\": {\"Verified\": %s}}\"' '${review_message} ${verified}' | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+            }
+        }
+    }
 }
-
