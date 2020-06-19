@@ -1,6 +1,4 @@
 #!/bin/bash
-JOB_NAME="clean-engineering-starfish-k6lpwee-build"
-build_codename=webos4tv
 CHIP_NAME=${JOB_NAME//clean-engineering-starfish-/}
 CHIP_NAME=${CHIP_NAME//-build/}
 
