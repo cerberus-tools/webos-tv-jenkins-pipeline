@@ -39,7 +39,9 @@ pipeline {
             }
             steps {
                 script {
-                    sh "cd module && docker-compose pull && docker-compose run run-test 2>&1"
+                    withCredentials([usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'LGE_AD_PASSWORD', usernameVariable: 'LGE_AD_USERNAME')]){
+                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY} && cd module && docker-compose pull && docker-compose run run-test 2>&1"
+                    }
                 }
             }
         }
