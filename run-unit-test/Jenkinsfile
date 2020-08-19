@@ -30,9 +30,6 @@ pipeline {
                     if (fileExists("module/run-test.sh") && fileExists("module/docker-compose.yml")) {
                         do_test = true
                     }
-                    def comment_base64 = env.GERRIT_EVENT_COMMENT_TEXT
-                    def comment = new String(comment_base64.decodeBase64())
-                    echo "DEBUG: ${comment}"
                 }
             }
         }
@@ -43,7 +40,19 @@ pipeline {
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'LGE_AD_PASSWORD', usernameVariable: 'LGE_AD_USERNAME')]){
-                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST} && cd module && docker-compose pull && docker-compose run run-test 2>&1"
+                        def comment_base64 = env.GERRIT_EVENT_COMMENT_TEXT
+                        def comment = new String(comment_base64.decodeBase64())
+                        def parameter_pattern = ~/parameter:.*/
+                        def parameters_in_comments = ( comment =~ parameter_pattern).findAll()
+                        def test_parameters = ""
+                        if ( parameters_in_comments.size() > 0 ) {
+                            test_parameters = "/tools/run-test.sh "
+                            for ( String param_line : parameters_in_comments ) {
+                                def param = param_line.replaceAll("parameter:", "")
+                                test_parameters = "$test_parameters $param"
+                            }
+                        }
+                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST} && cd module && docker-compose pull && docker-compose run run-test ${test_parameters} 2>&1"
                     }
                 }
             }
