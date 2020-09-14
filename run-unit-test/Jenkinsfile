@@ -85,8 +85,11 @@ pipeline {
         }
         always {
             script {
+                //zip zipFile: "artifacts.zip", archive: true, dir: "module/test"
+                zip zipFile: "artifacts.zip", archive: false, dir: "module/test"
                 sh "pwd"
                 sh "ls -l"
+                sh "ls -l module/"
                 sh "id -un"
             }
         }
