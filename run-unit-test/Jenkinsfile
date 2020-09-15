@@ -88,6 +88,11 @@ pipeline {
         always {
             script {
                 //zip zipFile: "artifacts.zip", archive: true, dir: "module/test"
+                def archive_web_root = "http://webos-ci.lge.com/download/others"
+                def archive_root = "/binary/build_results/others"
+                def archive_dir = "${env.JOB_NAME}".replaceAll(" ", "_")
+                def archive_target_dir = "${archive_root}/${archive_dir}/${env.BUILD_NUMBER}"
+                def archive_web_link = "${archive_web_root}/${archive_dir}/${env.BUILD_NUMBER}"
                 def zip_target_dir = "module/artifacts"
                 def zip_archived_file = "module/artifacts.zip"
                 if (fileExists( zip_target_dir)) {
@@ -101,6 +106,9 @@ pipeline {
                     echo "WARNING: So this file can't be copied to a file server"
                 } else {
                     echo "INFO: ${zip_archived_file}'s size in bytes is ${returned_size_int} and copied to a file server"
+                    sh script: "mkdir -p ${archive_target_dir}"
+                    sh script: "cp -v ${zip_archived_file} ${archive_target_dir}/"
+                    currentBuild.description = "${currentBuild.description}<li><a href=\"${archive_web_link}\">Archives</a></li>"
                 }
                 sh "pwd"
                 sh "ls -l"
