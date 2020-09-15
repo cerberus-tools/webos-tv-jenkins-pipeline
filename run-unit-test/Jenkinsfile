@@ -52,7 +52,9 @@ pipeline {
                                 test_parameters = "$test_parameters $param"
                             }
                         }
-                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST} && cd module && docker-compose pull && docker-compose run run-test ${test_parameters} 2>&1"
+                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST}"
+                        sh "cd module && docker-compose pull"
+                        sh "cd module && docker-compose run run-test ${test_parameters} 2>&1"
                     }
                 }
             }
@@ -81,6 +83,36 @@ pipeline {
                 review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
                 writeFile file: "data.json", text: review_data
                 sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+            }
+        }
+        always {
+            script {
+                def archive_web_root = "http://webos-ci.lge.com/download/others"
+                def archive_root = "/binary/build_results/others"
+                def archive_dir = "${env.JOB_NAME}".replaceAll(" ", "_")
+                def archive_target_dir = "${archive_root}/${archive_dir}/${env.BUILD_NUMBER}"
+                def archive_target_root = "${archive_root}/${archive_dir}"
+                def archive_web_link = "${archive_web_root}/${archive_dir}/${env.BUILD_NUMBER}"
+                def zip_target_dir = "module/artifacts"
+                def zip_archived_file = "module/artifacts.zip"
+                if (fileExists( zip_target_dir)) {
+                    zip zipFile: zip_archived_file, archive: false, dir: zip_target_dir
+                }
+                def returned_size = sh returnStdout: true, script: "stat -c %s ${zip_archived_file}"
+                def returned_size_int = Integer.valueOf(returned_size.split("\n")[0])
+                def max_size_in_bytes = 10485760 // 10 MB in Binary
+                if ( max_size_in_bytes < returned_size_int ) {
+                    echo "WARNING: ${zip_archived_file}'s size in bytes is ${returned_size_int} and greater than ${max_size_in_bytes}"
+                    echo "WARNING: So this file can't be copied to a file server"
+                    sh script: "rm -rfv ${zip_archived_file}"
+                } else {
+                    echo "INFO: ${zip_archived_file}'s size in bytes is ${returned_size_int} and copied to a file server"
+                    sh script: "mkdir -p ${archive_target_dir}"
+                    sh script: "cp -v ${zip_archived_file} ${archive_target_dir}/"
+                    currentBuild.description = "${currentBuild.description}<li><a href=\"${archive_web_link}\">Archives</a></li>"
+                }
+                echo "INFO: Remove artifacts.zip that were created before 7 days"
+                sh script: "find ${archive_target_root} -maxdepth 1 -mtime +7 -type d -regex \".*/[0-9.]+\$\" -exec rm -rfv {} ';'"
             }
         }
     }
