@@ -113,11 +113,6 @@ pipeline {
                 }
                 echo "INFO: Remove artifacts.zip that were created before 7 days"
                 sh script: "find ${archive_target_root} -maxdepth 1 -mtime +7 -type d -regex \".*/[0-9.]+\$\" -exec rm -rfv {} ';'"
-                sh "pwd"
-                sh "ls -l"
-                sh "ls -l module/"
-                sh "id -un"
-                sh "env|grep Run"
             }
         }
     }
