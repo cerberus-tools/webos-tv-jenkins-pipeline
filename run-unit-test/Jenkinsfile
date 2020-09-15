@@ -91,12 +91,22 @@ pipeline {
                 def zip_target_dir = "module/artifacts"
                 def zip_archived_file = "module/artifacts.zip"
                 if (fileExists( zip_target_dir)) {
-                    zip zipFile: zip_archived_file, archive: true, dir: zip_target_dir
+                    zip zipFile: zip_archived_file, archive: false, dir: zip_target_dir
+                }
+                def returned_size = sh returnStdout: true, script: "stat -c %s ${zip_archived_file}"
+                def returned_size_int = Integer.valueOf(returned_size.split("\n")[0])
+                def max_size_in_bytes = 10485760 // 10 MB in Binary
+                if ( max_size_in_bytes < returned_size_int ) {
+                    echo "WARNING: ${zip_archived_file}'s size in bytes is ${returned_size_int} and greater than ${max_size_in_bytes}"
+                    echo "WARNING: So this file can't be copied to a file server"
+                } else {
+                    echo "INFO: ${zip_archived_file}'s size in bytes is ${returned_size_int} and copied to a file server"
                 }
                 sh "pwd"
                 sh "ls -l"
                 sh "ls -l module/"
                 sh "id -un"
+                sh "env|grep Run"
             }
         }
     }
