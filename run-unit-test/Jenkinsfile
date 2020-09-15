@@ -87,7 +87,6 @@ pipeline {
         }
         always {
             script {
-                //zip zipFile: "artifacts.zip", archive: true, dir: "module/test"
                 def archive_web_root = "http://webos-ci.lge.com/download/others"
                 def archive_root = "/binary/build_results/others"
                 def archive_dir = "${env.JOB_NAME}".replaceAll(" ", "_")
@@ -104,6 +103,7 @@ pipeline {
                 if ( max_size_in_bytes < returned_size_int ) {
                     echo "WARNING: ${zip_archived_file}'s size in bytes is ${returned_size_int} and greater than ${max_size_in_bytes}"
                     echo "WARNING: So this file can't be copied to a file server"
+                    sh script: "rm -rfv ${zip_archived_file}"
                 } else {
                     echo "INFO: ${zip_archived_file}'s size in bytes is ${returned_size_int} and copied to a file server"
                     sh script: "mkdir -p ${archive_target_dir}"
