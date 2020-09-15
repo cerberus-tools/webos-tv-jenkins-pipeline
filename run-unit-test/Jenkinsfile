@@ -91,6 +91,7 @@ pipeline {
                 def archive_root = "/binary/build_results/others"
                 def archive_dir = "${env.JOB_NAME}".replaceAll(" ", "_")
                 def archive_target_dir = "${archive_root}/${archive_dir}/${env.BUILD_NUMBER}"
+                def archive_target_root = "${archive_root}/${archive_dir}"
                 def archive_web_link = "${archive_web_root}/${archive_dir}/${env.BUILD_NUMBER}"
                 def zip_target_dir = "module/artifacts"
                 def zip_archived_file = "module/artifacts.zip"
@@ -110,6 +111,8 @@ pipeline {
                     sh script: "cp -v ${zip_archived_file} ${archive_target_dir}/"
                     currentBuild.description = "${currentBuild.description}<li><a href=\"${archive_web_link}\">Archives</a></li>"
                 }
+                echo "INFO: Remove artifacts.zip that were created before 7 days"
+                sh script: "find ${archive_target_root} -maxdepth 1 -mtime +7 -type d -regex \".*/[0-9.]+\$\" -exec rm -rfv {} ';'"
                 sh "pwd"
                 sh "ls -l"
                 sh "ls -l module/"
