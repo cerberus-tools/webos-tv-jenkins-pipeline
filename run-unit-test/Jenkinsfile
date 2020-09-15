@@ -52,7 +52,9 @@ pipeline {
                                 test_parameters = "$test_parameters $param"
                             }
                         }
-                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST} && cd module && docker-compose pull && docker-compose run run-test ${test_parameters} 2>&1"
+                        sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST}"
+                        sh "cd module && docker-compose pull"
+                        sh "cd module && docker-compose run run-test ${test_parameters} 2>&1"
                     }
                 }
             }
@@ -86,7 +88,11 @@ pipeline {
         always {
             script {
                 //zip zipFile: "artifacts.zip", archive: true, dir: "module/test"
-                zip zipFile: "artifacts.zip", archive: false, dir: "module/test"
+                def zip_target_dir = "module/artifacts"
+                def zip_archived_file = "module/artifacts.zip"
+                if (fileExists( zip_target_dir)) {
+                    zip zipFile: zip_archived_file, archive: true, dir: zip_target_dir
+                }
                 sh "pwd"
                 sh "ls -l"
                 sh "ls -l module/"
