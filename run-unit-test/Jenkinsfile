@@ -89,6 +89,15 @@ pipeline {
                 sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
             }
         }
+        aborted {
+            script {
+                def review_message = "Aborted: Unit test on ${env.BUILD_URL} by Timeout or Administrator"
+                def verified = "-1"
+                review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
+                writeFile file: "data.json", text: review_data
+                sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+            }
+        }
         always {
             script {
                 def archive_web_root = "http://webos-ci.lge.com/download/others"
@@ -120,7 +129,6 @@ pipeline {
                 }
                 echo "INFO: Remove artifacts.zip that were created before 7 days"
                 sh script: "find ${archive_target_root} -maxdepth 1 -mtime +7 -type d -regex \".*/[0-9.]+\$\" -exec rm -rfv {} ';'"
-                echo currentBuild.result
             }
         }
     }
