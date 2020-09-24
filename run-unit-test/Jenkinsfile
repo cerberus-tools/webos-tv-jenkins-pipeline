@@ -7,6 +7,9 @@ pipeline {
         label 'run-unittest'
     }
 
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
     stages {
         stage('Cleanup') {
             steps {
@@ -79,6 +82,15 @@ pipeline {
         failure {
             script {
                 def review_message = "Failure: Unit test on ${env.BUILD_URL}"
+                def verified = "-1"
+                review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
+                writeFile file: "data.json", text: review_data
+                sh "cat data.json | ssh mysoyul.park@${env.GERRIT_HOST} gerrit review ${env.GERRIT_CHANGE_NUMBER},${env.GERRIT_PATCHSET_NUMBER} --json"
+            }
+        }
+        aborted {
+            script {
+                def review_message = "Aborted: Unit test on ${env.BUILD_URL} by Timeout or Administrator"
                 def verified = "-1"
                 review_data = JsonOutput.toJson([message: review_message, labels: [Verified: verified]])
                 writeFile file: "data.json", text: review_data
