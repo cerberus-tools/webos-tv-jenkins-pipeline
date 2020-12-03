@@ -107,6 +107,7 @@ pipeline {
                 def archive_web_link = "${archive_web_root}/${archive_dir}/${env.BUILD_NUMBER}"
                 def zip_target_dir = "module/artifacts"
                 def zip_archived_file = "module/artifacts.zip"
+                sh script: "mkdir -p ${archive_target_root}"
                 if (fileExists( zip_target_dir)) {
                     echo "INFO: Zip /work/artifacts directory into /work/artifacts.zip"
                     zip zipFile: zip_archived_file, archive: false, dir: zip_target_dir
