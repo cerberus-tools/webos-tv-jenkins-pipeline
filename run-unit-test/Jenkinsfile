@@ -57,7 +57,7 @@ pipeline {
                         }
                         sh "docker login -u ${LGE_AD_USERNAME} -p ${LGE_AD_PASSWORD} ${LGE_DOCKER_REGISTRY_HOST}"
                         sh "cd module && docker-compose pull"
-                        sh "cd module && docker-compose run run-test ${test_parameters} 2>&1"
+                        sh "cd module && docker-compose run --rm run-test ${test_parameters} 2>&1"
                     }
                 }
             }
