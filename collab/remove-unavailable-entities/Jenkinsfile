@@ -1,0 +1,40 @@
+pipeline {
+    agent {
+        docker {
+            alwaysPull true
+            image 'docker-registry.lge.com/project/webos/webos-tv-toolbox:latest'
+            label 'swfarm-opengrok'
+            registryUrl 'https://docker-registry.lge.com'
+            registryCredentialsId 'lge_ad'
+        }
+    }
+    stages {
+        stage('Run s acript') {
+            steps {
+                script {
+                    def username = ""
+                    def password = ""
+                    def ad_admin_password = ""
+                    withCredentials([
+                        usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'cred_PASSWORD', usernameVariable: 'cred_USERNAME'), 
+                        string(credentialsId: 'AD_ADMIN_PASSWORD', variable: 'AD_ADMIN_PASSWORD')]) 
+                    {
+                        if ( env.USERNAME == "" ) {
+                            echo "Use credential"
+                            username = env.cred_USERNAME
+                            password = env.cred_PASSWORD
+                        } else {
+                            echo "Use input"
+                            username = env.USERNAME
+                            password = env.PASSWORD
+                        }
+                        ad_admin_password = env.AD_ADMIN_PASSWORD
+                        sh 'python3 /work/tools/confluence/remove-permissions-from-space.py --url $CONFLUENCE_URL -u ' + username + ' -p ' + password + ' --space_key $SPACE_KEY --ldap_password ' + ad_admin_password
+                    }
+                    
+                }
+            }
+        }
+    }
+}
+
