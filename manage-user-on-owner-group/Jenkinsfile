@@ -1,0 +1,39 @@
+pipeline {
+    agent {
+        docker {
+            alwaysPull true
+            image 'docker-registry.lge.com/project/webos/webos-tv-toolbox:latest'
+            label 'swfarm-opengrok'
+            registryUrl 'https://docker-registry.lge.com'
+            registryCredentialsId 'lge_ad'
+            args '--dns=10.187.38.16 --dns=156.147.135.180 -u 4777:100 -v /vol/users:/vol/users -v /home/work:/home/work'
+        }
+    }
+    stages {
+        stage('Getting tools and install modules') {
+            steps {
+                //git branch: 'master', url: 'http://mod.lge.com/hub/tv_scm_tool/lge_tv_es_tools.git'
+                sh "cd /work && pwd && ls -al"
+            }
+        }
+        stage('Run s acript') {
+            steps {
+                script {
+                    def suffix = ""
+                    if ( env.Remove_user == "true")  {
+                        echo "Remove user"
+                        suffix = "--remove-user"
+                    } else {
+                        echo "Add user"
+                    }
+                    withCredentials([
+                        usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')
+                        ]) {
+                        sh "cd /work && PYTHONPATH=./src python3 tools/wall.lge.com/manage-project-owner.py --url https://wall.lge.com/ --username ${USERNAME} --password ${PASSWORD} --project ${PROJECT_NAME} --target-user ${TARGET_USER} " + suffix
+                    }    
+                }
+                
+            }
+        }
+    }
+}
