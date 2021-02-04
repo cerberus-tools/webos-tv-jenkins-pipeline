@@ -26,13 +26,17 @@ pipeline {
                     } else {
                         echo "Add user"
                     }
-                    withCredentials([
-                        usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')
-                        ]) {
-                        sh "cd /work && PYTHONPATH=./src python3 tools/wall.lge.com/manage-project-owner.py --url https://wall.lge.com/ --username ${USERNAME} --password ${PASSWORD} --project ${PROJECT_NAME} --target-user ${TARGET_USER} " + suffix
-                    }    
+                    def users  = env.TARGET_USER.replaceAll(" ", "").split(",")
+                    for ( String user : users)
+                    {
+                        echo "INFO: Add {user} to {PROJECT_NAME}"
+                        withCredentials([
+                            usernamePassword(credentialsId: 'lge_ad', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')
+                            ]) {
+                            sh "cd /work && PYTHONPATH=./src python3 tools/wall.lge.com/manage-project-owner.py --url https://wall.lge.com/ --username ${USERNAME} --password ${PASSWORD} --project ${PROJECT_NAME} --target-user ${user} " + suffix
+                        }                            
+                    }
                 }
-                
             }
         }
     }
